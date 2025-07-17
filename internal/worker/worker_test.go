@@ -38,7 +38,7 @@ func TestWorker(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		pool.Run(reqs)
+		pool.Run(reqs, false)
 	}()
 	wg.Wait()
 
@@ -71,7 +71,7 @@ func TestWorker_WithRateLimit(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		pool.Run(reqs)
+		pool.Run(reqs, false)
 	}()
 	wg.Wait()
 	duration := time.Since(start)

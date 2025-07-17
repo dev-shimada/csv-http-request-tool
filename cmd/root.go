@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -25,6 +26,8 @@ var (
 	timeout        int
 	rate           int
 	verbose        bool
+	dryRun         bool
+	humanReadable  bool
 )
 
 var rootCmd = &cobra.Command{
@@ -82,8 +85,9 @@ var rootCmd = &cobra.Command{
 		close(reqs)
 
 		client := internalhttp.NewClient(time.Duration(timeout) * time.Second)
-		pool := worker.NewPool(client, parallel, rate)
-		pool.Run(reqs)
+		pool := worker.NewPool(client, parallel, rate, dryRun, humanReadable)
+		ctx := context.Background()
+		pool.Run(ctx, reqs)
 	},
 }
 
@@ -104,6 +108,8 @@ func init() {
 	rootCmd.Flags().IntVarP(&timeout, "timeout", "t", 30, "Request timeout in seconds")
 	rootCmd.Flags().IntVarP(&rate, "rate", "r", 0, "Rate limit in requests per second")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
+	rootCmd.Flags().BoolVarP(&dryRun, "dry-run", "d", false, "Dry run mode (no requests sent)")
+	rootCmd.Flags().BoolVarP(&humanReadable, "human-readable", "H", false, "Output in human-readable format")
 
 	rootCmd.MarkFlagRequired("csv")
 	rootCmd.MarkFlagRequired("url")
