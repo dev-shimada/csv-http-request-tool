@@ -1,0 +1,27 @@
+{
+    "name": "csv-http-request-tool",
+    "build": {
+        "context": ".",
+        "dockerfile": "Dockerfile",
+        "target": "vscode"
+    },
+    "runArgs": [
+		"--env-file",
+		".devcontainer/.env"
+	],
+    "workspaceFolder": "/workspace",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "golang.Go",
+                "GitHub.copilot",
+                "RooVeterinaryInc.roo-cline"
+            ]
+        }
+    },
+    "mounts": [
+        "source=${localWorkspaceFolder}/,target=/workspace,type=bind"
+    ],
+    "remoteUser": "root",
+    "postCreateCommand": "/bin/sh .devcontainer/post_create.sh"
+}
