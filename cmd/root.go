@@ -7,8 +7,13 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/dev-shimada/csv-http-request-tool/internal/csv"
 	internalhttp "github.com/dev-shimada/csv-http-request-tool/internal/http"
 	"github.com/dev-shimada/csv-http-request-tool/internal/request"
@@ -51,6 +56,28 @@ var rootCmd = &cobra.Command{
 		if csvPath == "" || urlTemplate == "" {
 			cmd.Help()
 			os.Exit(1)
+		}
+
+		if strings.HasPrefix(csvPath, "s3://") {
+			splitedPath := strings.Split(strings.TrimPrefix(csvPath, "s3://"), "/")
+			// パスを上書き
+			csvPath = fmt.Sprintf("/tmp/%s", splitedPath[len(splitedPath)-1])
+			sess := session.Must(session.NewSession())
+			downloader := s3manager.NewDownloader(sess)
+			f, err := os.Create(csvPath)
+			if err != nil {
+				slog.Error(fmt.Sprintf("failed to create file: %v\n", err))
+				os.Exit(1)
+			}
+			n, err := downloader.Download(f, &s3.GetObjectInput{
+				Bucket: aws.String(splitedPath[0]),
+				Key:    aws.String(strings.Join(splitedPath[1:], "/")),
+			})
+			if err != nil {
+				slog.Error(fmt.Sprintf("failed to download file from S3: %v\n", err))
+				os.Exit(1)
+			}
+			fmt.Printf("file downloaded, %d bytes\n", n)
 		}
 
 		file, err := os.Open(csvPath)

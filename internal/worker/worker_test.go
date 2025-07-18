@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -25,20 +26,21 @@ func TestWorker(t *testing.T) {
 		},
 	}
 
-	pool := NewPool(mockClient, 2, 0)
+	pool := NewPool(mockClient, 2, 0, false, false)
 
 	reqs := make(chan *http.Request, 5)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		req, _ := http.NewRequest(http.MethodGet, "http://localhost", nil)
 		reqs <- req
 	}
 	close(reqs)
 
 	var wg sync.WaitGroup
+	ctx := context.Background()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		pool.Run(reqs, false)
+		pool.Run(ctx, reqs)
 	}()
 	wg.Wait()
 
@@ -57,7 +59,7 @@ func TestWorker_WithRateLimit(t *testing.T) {
 	}
 
 	// 1秒あたり2リクエストに制限
-	pool := NewPool(mockClient, 1, 2)
+	pool := NewPool(mockClient, 1, 2, false, false)
 
 	reqs := make(chan *http.Request, 5)
 	for i := 0; i < 5; i++ {
@@ -71,7 +73,7 @@ func TestWorker_WithRateLimit(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		pool.Run(reqs, false)
+		pool.Run(context.Background(), reqs)
 	}()
 	wg.Wait()
 	duration := time.Since(start)
