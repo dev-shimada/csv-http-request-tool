@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.7
 	github.com/olekukonko/tablewriter v1.0.8
 	github.com/spf13/cobra v1.9.1
+	golang.org/x/text v0.27.0
 )
 
 require (

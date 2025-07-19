@@ -1,20 +1,18 @@
 package csv
 
 import (
-	"bytes"
 	"encoding/csv"
 	"io"
+
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
-var bom = []byte{0xef, 0xbb, 0xbf}
-
 func Read(r io.Reader) ([][]string, error) {
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	data = bytes.TrimPrefix(data, bom)
-	reader := csv.NewReader(bytes.NewReader(data))
+	// Use BOMOverride to handle UTF-8 with BOM
+	fallback := unicode.UTF8.NewDecoder()
+	data := transform.NewReader(r, unicode.BOMOverride(fallback))
+	reader := csv.NewReader(data)
 	records, err := reader.ReadAll()
 	if err != nil {
 		return nil, err
