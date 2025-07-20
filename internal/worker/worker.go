@@ -67,16 +67,20 @@ func (p *Pool) Run(ctx context.Context, reqs <-chan *http.Request) {
 					<-ticker.C
 				}
 				if p.dryRun {
-					slog.Info(fmt.Sprintf("dry run: %s\n", req.URL))
+					co <- out{req: req, res: nil, err: nil}
 					continue
 				}
 				resp, err := p.client.Do(req)
 				if err != nil {
-					slog.Error(fmt.Sprintf("request error: %v\n", err))
+					co <- out{req: req, res: nil, err: err}
 					continue
 				}
 				if resp != nil && resp.Body != nil {
-					resp.Body.Close()
+					err := resp.Body.Close()
+					if err != nil {
+						co <- out{req: req, res: nil, err: fmt.Errorf("failed to close response body: %w", err)}
+						continue
+					}
 				}
 				co <- out{req: req, res: resp, err: err}
 			}
@@ -87,29 +91,56 @@ func (p *Pool) Run(ctx context.Context, reqs <-chan *http.Request) {
 		close(co)
 	}()
 
+	outputs := make([]out, 0, cap(co))
+	for o := range co {
+		outputs = append(outputs, o)
+	}
+
 	if p.humanReadable {
 		tableString := &strings.Builder{}
 		table := tablewriter.NewWriter(tableString)
 		table.Header([]string{"URL", "Status", "Body", "Error"})
-		for out := range co {
+		for _, out := range outputs {
+			var status, body, errMsg string
 			if out.err != nil {
-				slog.Error(fmt.Sprintf("error processing request: %v", out.err))
-				continue
+				errMsg = out.err.Error()
 			}
-			body := ""
-			if out.res.Body != nil {
-				bodyBytes, _ := io.ReadAll(out.res.Body)
-				body = string(bodyBytes)
+			if out.res != nil {
+				status = fmt.Sprintf("%d", out.res.StatusCode)
+				if out.res.Body != nil {
+					// Body is already closed in worker, so this will be empty
+					bodyBytes, _ := io.ReadAll(out.res.Body)
+					body = string(bodyBytes)
+				}
 			}
-			table.Append([]string{
+			_ = table.Append([]string{
 				out.req.URL.String(),
-				fmt.Sprintf("%d", out.res.StatusCode),
+				status,
 				body,
-				fmt.Sprintf("%v", out.err),
+				errMsg,
 			})
 		}
-		table.Render()
+		if err := table.Render(); err != nil {
+			slog.Error(fmt.Sprintf("failed to render table: %v", err))
+			return
+		}
 		fmt.Println(tableString.String())
+	} else if p.dryRun {
+		for _, out := range outputs {
+			slog.Info(fmt.Sprintf("Dry run for %s", out.req.URL))
+		}
+	} else {
+		for _, out := range outputs {
+			if out.err != nil {
+				slog.Error(fmt.Sprintf("Error for %s: %v", out.req.URL, out.err))
+			} else if out.res == nil {
+				slog.Error(fmt.Sprintf("No response for %s", out.req.URL))
+			} else if out.res.StatusCode >= 200 && out.res.StatusCode < 400 {
+				slog.Info(fmt.Sprintf("Success for %s: %d", out.req.URL, out.res.StatusCode))
+			} else {
+				slog.Warn(fmt.Sprintf("Non-OK status for %s: %d", out.req.URL, out.res.StatusCode))
+			}
+		}
 	}
 	if ticker != nil {
 		ticker.Stop()

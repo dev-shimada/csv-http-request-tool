@@ -13,6 +13,7 @@ func Read(r io.Reader) ([][]string, error) {
 	fallback := unicode.UTF8.NewDecoder()
 	data := transform.NewReader(r, unicode.BOMOverride(fallback))
 	reader := csv.NewReader(data)
+	reader.TrimLeadingSpace = true
 	records, err := reader.ReadAll()
 	if err != nil {
 		return nil, err

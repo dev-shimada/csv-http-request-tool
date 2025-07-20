@@ -45,7 +45,7 @@ var rootCmd = &cobra.Command{
 		case verbose:
 			programLevel.Set(slog.LevelDebug)
 		default:
-			programLevel.Set(slog.LevelWarn)
+			programLevel.Set(slog.LevelInfo)
 		}
 		handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: programLevel})
 		logger := slog.New(handler)
@@ -54,7 +54,7 @@ var rootCmd = &cobra.Command{
 		log.SetOutput(slog.NewLogLogger(handler, slog.LevelInfo).Writer())
 
 		if csvPath == "" || urlTemplate == "" {
-			cmd.Help()
+			_ = cmd.Help()
 			os.Exit(1)
 		}
 
@@ -85,7 +85,7 @@ var rootCmd = &cobra.Command{
 			slog.Error(fmt.Sprintf("failed to open csv file: %v\n", err))
 			os.Exit(1)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		records, err := csv.Read(file)
 		if err != nil {
@@ -138,6 +138,12 @@ func init() {
 	rootCmd.Flags().BoolVarP(&dryRun, "dry-run", "d", false, "Dry run mode (no requests sent)")
 	rootCmd.Flags().BoolVarP(&humanReadable, "human-readable", "H", false, "Output in human-readable format")
 
-	rootCmd.MarkFlagRequired("csv")
-	rootCmd.MarkFlagRequired("url")
+	if err := rootCmd.MarkFlagRequired("csv"); err != nil {
+		slog.Error(fmt.Sprintf("failed to mark csv flag as required: %v\n", err))
+		os.Exit(1)
+	}
+	if err := rootCmd.MarkFlagRequired("url"); err != nil {
+		slog.Error(fmt.Sprintf("failed to mark url flag as required: %v\n", err))
+		os.Exit(1)
+	}
 }
