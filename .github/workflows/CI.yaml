@@ -9,6 +9,7 @@ on:
 jobs:
   setup:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,6 +24,7 @@ jobs:
   lint:
     needs: setup
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Download repo
         uses: actions/download-artifact@v4
@@ -48,6 +50,7 @@ jobs:
   vet:
     needs: setup
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Download repo
         uses: actions/download-artifact@v4
@@ -71,6 +74,7 @@ jobs:
   build:
     needs: setup
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Download repo
         uses: actions/download-artifact@v4
@@ -94,6 +98,7 @@ jobs:
   test:
     needs: setup
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Download repo
         uses: actions/download-artifact@v4
